@@ -1,252 +1,215 @@
-import { motion } from 'motion/react';
-import { Lock, TrendingUp, DollarSign, Activity, Settings } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Lock, TrendingUp, DollarSign } from 'lucide-react';
 import { GlassCard } from './GlassCard';
+import { Button } from './Button';
+import { decrypt } from '../fhevm/encrypt'; 
+import { getRegistryContract } from '../contracts/registry';
+import { ethers } from 'ethers';
 
+// --- Props (Updated) ---
 interface DashboardProps {
-  onDepositClick: () => void;
-  onEligibilityClick: () => void;
-  onBorrowRepayClick: () => void;
-  onAdminClick: () => void;
-  walletConnected: boolean;
+  onDepositClick: () => void;
+  onEligibilityClick: () => void;
+  onBorrowRepayClick: () => void;
+  onAdminClick: () => void;
+  walletConnected: boolean;
+  // ADDED: Provider and Address for FHE calls
+  provider: ethers.BrowserProvider | null; 
+  userAddress: string;
 }
 
-export function Dashboard({ 
-  onDepositClick, 
-  onEligibilityClick, 
-  onBorrowRepayClick,
-  onAdminClick,
-  walletConnected 
+export function Dashboard({
+  onDepositClick,
+  onEligibilityClick,
+  onBorrowRepayClick,
+  onAdminClick,
+  walletConnected,
+  provider, 
+  userAddress 
 }: DashboardProps) {
-  return (
-    <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-4xl mb-2">Dashboard</h1>
-          <p className="text-[#9CA3AF]">Manage your encrypted credit account</p>
-        </div>
-        <button
-          onClick={onAdminClick}
-          className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-        >
-          <Settings className="w-6 h-6 text-[#9CA3AF] hover:text-white" />
-        </button>
-      </div>
+  
+  // --- State (Added) ---
+  const [collateral, setCollateral] = useState<string | null>(null);
+  const [score, setScore] = useState<string | null>(null);
+  const [loanBalance, setLoanBalance] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-      {/* Encrypted Account Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <GlassCard className="p-6 hover:border-[#7C3AED]/50 transition-all group">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-[#9CA3AF]">Encrypted Collateral</div>
-              <div className="p-2 bg-[#7C3AED]/20 rounded-lg">
-                <Lock className="w-5 h-5 text-[#7C3AED]" />
-              </div>
-            </div>
-            <div className="text-3xl mb-2 flex items-center gap-2">
-              <span className="text-[#7C3AED]">🔒</span>
-              <span className="text-[#9CA3AF]">Hidden</span>
-            </div>
-            <p className="text-xs text-[#9CA3AF]">
-              All data encrypted on-chain via Zama FHEVM
-            </p>
-          </GlassCard>
-        </motion.div>
+  // --- FHE Data Fetching Logic (Added) ---
+  useEffect(() => {
+    const fetchEncryptedData = async () => {
+      // Skip if wallet not connected or data is missing
+      if (!provider || !userAddress || !walletConnected) {
+        setIsLoading(false);
+        return;
+      }
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <GlassCard className="p-6 hover:border-[#00D1FF]/50 transition-all group">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-[#9CA3AF]">Encrypted Score</div>
-              <div className="p-2 bg-[#00D1FF]/20 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-[#00D1FF]" />
-              </div>
-            </div>
-            <div className="text-3xl mb-2 flex items-center gap-2">
-              <span className="text-[#00D1FF]">🔒</span>
-              <span className="text-[#9CA3AF]">Hidden</span>
-            </div>
-            <p className="text-xs text-[#9CA3AF]">
-              Score computed on encrypted data
-            </p>
-          </GlassCard>
-        </motion.div>
+      setIsLoading(true);
+              
+      try {
+        const registry = getRegistryContract(provider);
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <GlassCard className="p-6 hover:border-[#FACC15]/50 transition-all group">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-[#9CA3AF]">Loan Balance</div>
-              <div className="p-2 bg-[#FACC15]/20 rounded-lg">
-                <DollarSign className="w-5 h-5 text-[#FACC15]" />
-              </div>
-            </div>
-            <div className="text-3xl mb-2 flex items-center gap-2">
-              <span className="text-[#FACC15]">🔒</span>
-              <span className="text-[#9CA3AF]">Hidden</span>
-            </div>
-            <p className="text-xs text-[#9CA3AF]">
-              Private loan balance tracking
-            </p>
-          </GlassCard>
-        </motion.div>
-      </div>
+        // 1. Fetch encrypted FHE values
+        // Note: Contract function names need to be available in your registry ABI (they were not in the snippet you gave, but this assumes they are now)
+        const [encCollateral, encScore, encDebt] = await Promise.all([
+          registry.getEncCollateral(userAddress),
+          registry.getEncScore(userAddress),
+          registry.getEncDebt(userAddress)
+        ]);
 
-      {/* Actions Panel */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <GlassCard className="p-6 mb-8">
-          <h2 className="text-2xl mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <motion.button
-              onClick={onDepositClick}
-              className="p-4 bg-gradient-to-br from-[#7C3AED]/20 to-[#7C3AED]/5 border border-[#7C3AED]/30 rounded-lg hover:border-[#7C3AED] transition-all group"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className="text-left">
-                <div className="text-3xl mb-2">💳</div>
-                <div className="group-hover:text-[#7C3AED] transition-colors">
-                  Deposit Collateral
-                </div>
-                <div className="text-sm text-[#9CA3AF] mt-1">Add encrypted funds</div>
-              </div>
-            </motion.button>
+        // 2. Decrypt values locally
+        // Note: Your decrypt function must handle converting the ciphertext to the decrypted value (e.g., a number)
+        const decryptedCollateral = await decrypt(encCollateral);
+        const decryptedScore = await decrypt(encScore);
+        const decryptedDebt = await decrypt(encDebt);
 
-            <motion.button
-              onClick={onEligibilityClick}
-              className="p-4 bg-gradient-to-br from-[#00D1FF]/20 to-[#00D1FF]/5 border border-[#00D1FF]/30 rounded-lg hover:border-[#00D1FF] transition-all group"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className="text-left">
-                <div className="text-3xl mb-2">✅</div>
-                <div className="group-hover:text-[#00D1FF] transition-colors">
-                  Check Eligibility
-                </div>
-                <div className="text-sm text-[#9CA3AF] mt-1">Verify borrowing status</div>
-              </div>
-            </motion.button>
+        // 3. Format and update state (Assuming the returned number is the value in its smallest unit, e.g., cents, and needs to be divided by 100 for display)
+        // **IMPORTANT**: Adjust the division factor (e.g., / 100 or / 1e18) based on your contract's decimal handling. Assuming / 100 for simplicity here.
+        setCollateral(`$${(Number(decryptedCollateral) / 100).toFixed(2)}`);
+        setScore(Number(decryptedScore).toString());
+        setLoanBalance(`$${(Number(decryptedDebt) / 100).toFixed(2)}`);
 
-            <motion.button
-              onClick={onBorrowRepayClick}
-              className="p-4 bg-gradient-to-br from-[#FACC15]/20 to-[#FACC15]/5 border border-[#FACC15]/30 rounded-lg hover:border-[#FACC15] transition-all group"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className="text-left">
-                <div className="text-3xl mb-2">🪙</div>
-                <div className="group-hover:text-[#FACC15] transition-colors">
-                  Borrow / Repay
-                </div>
-                <div className="text-sm text-[#9CA3AF] mt-1">Manage your loans</div>
-              </div>
-            </motion.button>
+      } catch (error) {
+        console.error("Error fetching encrypted data:", error);
+        // Keep data hidden on error
+        setCollateral(null);
+        setScore(null);
+        setLoanBalance(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-            <motion.button
-              onClick={onBorrowRepayClick}
-              className="p-4 bg-gradient-to-br from-[#EC4899]/20 to-[#EC4899]/5 border border-[#EC4899]/30 rounded-lg hover:border-[#EC4899] transition-all group"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className="text-left">
-                <div className="text-3xl mb-2">📊</div>
-                <div className="group-hover:text-[#EC4899] transition-colors">
-                  View Analytics
-                </div>
-                <div className="text-sm text-[#9CA3AF] mt-1">Track your activity</div>
-              </div>
-            </motion.button>
-          </div>
-        </GlassCard>
-      </motion.div>
+    fetchEncryptedData();
+  }, [provider, userAddress, walletConnected]);
 
-      {/* Policy Overview & Activity Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <GlassCard className="p-6">
-            <h2 className="text-2xl mb-6">System Policy</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-black/40 rounded-lg">
-                <span className="text-[#9CA3AF]">Max LTV</span>
-                <span className="text-[#7C3AED]">75%</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-black/40 rounded-lg">
-                <span className="text-[#9CA3AF]">Min Score</span>
-                <span className="text-[#00D1FF]">500</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-black/40 rounded-lg">
-                <span className="text-[#9CA3AF]">Liquidation Threshold</span>
-                <span className="text-[#FACC15]">80%</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-black/40 rounded-lg">
-                <span className="text-[#9CA3AF]">APR</span>
-                <span className="text-[#EC4899]">5.0%</span>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <GlassCard className="p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Activity className="w-6 h-6 text-[#7C3AED]" />
-              <h2 className="text-2xl">Activity Feed</h2>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#7C3AED]/20 rounded-lg">
-                  <span className="text-xl">💳</span>
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm">Collateral updated successfully</div>
-                  <div className="text-xs text-[#9CA3AF]">2 hours ago</div>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#00D1FF]/20 rounded-lg">
-                  <span className="text-xl">✅</span>
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm">Eligibility check: PASSED</div>
-                  <div className="text-xs text-[#9CA3AF]">1 day ago</div>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#FACC15]/20 rounded-lg">
-                  <span className="text-xl">🪙</span>
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm">Loan repayment processed</div>
-                  <div className="text-xs text-[#9CA3AF]">3 days ago</div>
-                </div>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
-      </div>
-    </div>
-  );
+  return (
+    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+      
+      {/* --- Header --- */}
+      <header className="text-center space-y-2">
+        <h1 className="text-4xl font-bold text-white">Insperion Private Lending Dashboard</h1>
+        <p className="text-[#9CA3AF] text-lg">
+          Manage your private collateral and loans on the FHEVM.
+        </p>
+      </header>
+      
+      {/* --- Key Metrics Grid --- */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Encrypted Collateral Card (Updated) */}
+        <GlassCard className="p-6 hover:border-[#7C3AED]/50 transition-all group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-[#9CA3AF]">Encrypted Collateral</div>
+            <div className="p-2 bg-[#7C3AED]/20 rounded-lg">
+              <Lock className="w-5 h-5 text-[#7C3AED]" />
+            </div>
+          </div>
+          <div className="text-3xl mb-2 flex items-center gap-2">
+            {isLoading ? (
+              <span className="text-[#9CA3AF]">Loading...</span>
+            ) : collateral ? (
+              <span className="text-white">{collateral}</span>
+            ) : (
+              <>
+                <span className="text-[#7C3AED]">🔒</span>
+                <span className="text-[#9CA3AF]">Hidden</span>
+              </>
+            )}
+          </div>
+          <p className="text-xs text-[#9CA3AF]">
+            All data encrypted on-chain via Zama FHEVM
+          </p>
+        </GlassCard>
+
+        {/* Encrypted Score Card (Updated) */}
+        <GlassCard className="p-6 hover:border-[#00D1FF]/50 transition-all group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-[#9CA3AF]">Encrypted Score</div>
+            <div className="p-2 bg-[#00D1FF]/20 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-[#00D1FF]" />
+            </div>
+          </div>
+          <div className="text-3xl mb-2 flex items-center gap-2">
+            {isLoading ? (
+              <span className="text-[#9CA3AF]">Loading...</span>
+            ) : score ? (
+              <span className="text-white">{score}</span>
+            ) : (
+              <>
+                <span className="text-[#00D1FF]">🔒</span>
+                <span className="text-[#9CA3AF]">Hidden</span>
+              </>
+            )}
+          </div>
+          <p className="text-xs text-[#9CA3AF]">
+            Score computed on encrypted data
+          </p>
+        </GlassCard>
+
+        {/* Loan Balance Card (Updated) */}
+        <GlassCard className="p-6 hover:border-[#FACC15]/50 transition-all group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-[#9CA3AF]">Loan Balance</div>
+            <div className="p-2 bg-[#FACC15]/20 rounded-lg">
+              <DollarSign className="w-5 h-5 text-[#FACC15]" />
+            </div>
+          </div>
+          <div className="text-3xl mb-2 flex items-center gap-2">
+            {isLoading ? (
+              <span className="text-[#9CA3AF]">Loading...</span>
+            ) : loanBalance ? (
+              <span className="text-white">{loanBalance}</span>
+            ) : (
+              <>
+                <span className="text-[#FACC15]">🔒</span>
+                <span className="text-[#9CA3AF]">Hidden</span>
+              </>
+            )}
+          </div>
+          <p className="text-xs text-[#9CA3AF]">
+            Private loan balance tracking
+          </p>
+        </GlassCard>
+      </div>
+      
+      {/* --- Actions Section --- */}
+      <GlassCard className="p-6 space-y-4">
+        <h2 className="text-2xl font-semibold text-white">Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Button 
+            className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white" 
+            onClick={onDepositClick}
+            disabled={!walletConnected || isLoading}
+          >
+            Deposit Collateral
+          </Button>
+          <Button 
+            className="bg-[#00D1FF] hover:bg-[#00B8E3] text-black" 
+            onClick={onEligibilityClick}
+            disabled={!walletConnected || isLoading}
+          >
+            Check Eligibility
+          </Button>
+          <Button 
+            className="bg-[#FACC15] hover:bg-[#EAB308] text-black" 
+            onClick={onBorrowRepayClick}
+            disabled={!walletConnected || isLoading}
+          >
+            Borrow / Repay
+          </Button>
+          <Button 
+            className="bg-[#475569] hover:bg-[#334155] text-white" 
+            onClick={onAdminClick}
+            disabled={!walletConnected || isLoading}
+          >
+            Admin Panel
+          </Button>
+        </div>
+        {!walletConnected && (
+          <p className="text-center text-red-400">Please connect your wallet to interact with the dashboard.</p>
+        )}
+      </GlassCard>
+    </div>
+  );
 }
