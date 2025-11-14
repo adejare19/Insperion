@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Navbar } from './components/Navbar';
+import { connectWallet } from './wallet/connect';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { DepositModal } from './components/DepositModal';
@@ -16,9 +17,14 @@ export default function App() {
   const [borrowRepayModalOpen, setBorrowRepayModalOpen] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
 
-  const handleConnectWallet = () => {
-    setWalletConnected(true);
-  };
+  const handleConnectWallet = async () => {
+  try {
+    await connectWallet();      // connects MetaMask + injects provider
+    setWalletConnected(true);   // updates UI
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const handleLaunchApp = () => {
     if (!walletConnected) {

@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Lock, Loader2, CheckCircle } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 
+import { encryptUint64 } from '../fhevm/encrypt';
+import { getRegistry } from '../contracts/registry';
+import { ethers } from 'ethers';
+
 interface DepositModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,20 +19,44 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsEncrypting(true);
-    
-    // Simulate encryption process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsEncrypting(false);
-    setIsSuccess(true);
-    
-    // Auto close after success
-    setTimeout(() => {
-      setIsSuccess(false);
-      setAmount('');
-      onClose();
-    }, 2000);
+
+    const provider = (window as any).insperionProvider as
+      | ethers.BrowserProvider
+      | undefined;
+
+    if (!provider) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
+    try {
+      setIsEncrypting(true);
+
+      // 1. Encrypt deposit
+      const encrypted = await encryptUint64(Number(amount));
+
+      // 2. Get contract instance
+      const registry = getRegistry(provider);
+
+      // 3. Send encrypted deposit transaction
+      const tx = await registry.depositCollateral(encrypted.handles[0]);
+      await tx.wait();
+
+      // 4. UI success
+      setIsEncrypting(false);
+      setIsSuccess(true);
+
+      setTimeout(() => {
+        setIsSuccess(false);
+        setAmount('');
+        onClose();
+      }, 1800);
+
+    } catch (error) {
+      console.error(error);
+      alert("Transaction failed. Check console for details.");
+      setIsEncrypting(false);
+    }
   };
 
   return (
