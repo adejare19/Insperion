@@ -11,6 +11,7 @@ import "solidity-coverage";
 
 import "./tasks/accounts";
 import "./tasks/FHECounter";
+import "./tasks/deposit";
 
 // Run 'npx hardhat vars setup' to see the list of variables that need to be set
 
@@ -56,6 +57,16 @@ const config: HardhatUserConfig = {
       },
       chainId: 11155111,
       url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
+fhevm: {
+        relayerUrl: "https://relayer.testnet.zama.cloud",
+        // Crucial: These contract addresses are needed for the FHEVM plugin to initialize
+        aclContractAddress: "0x687820221192C5B662b25367F70076A37bc79b6c",
+        inputVerifierContractAddress: "0xbc91f3daD1A5F19F8390c400196e58073B6a0BC4",
+        kmsContractAddress: "0x1364cBBf2cDF5032C47d8226a6f6FBD2AFCDacAC",
+        verifyingContractAddressDecryption: "0xb6E160B1ff80D67Bfe90A85eE06Ce0A2613607D1",
+        verifyingContractAddressInputVerification: "0x7048C39f048125eDa9d678AEbaDfB22F7900a29F",
+        gatewayChainId: 55815,
+    },
     },
   },
   paths: {
