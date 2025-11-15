@@ -3,6 +3,7 @@ import { Lock, TrendingUp, DollarSign } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { Button } from './Button';
 import { decrypt } from '../fhevm/encrypt'; 
+import { decrypt } from '../fhevm/decrypt';
 import { getRegistryContract } from '../contracts/registry';
 import { ethers } from 'ethers';
 
