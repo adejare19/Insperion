@@ -4,77 +4,75 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Loader2, CheckCircle } from 'lucide-react';
 import { GlassCard } from './GlassCard';
-import { encryptUint64 } from '../fhevm/encrypt'; // Import FHE encryption
-import { getRegistryContract } from '../contracts/registry'; // Import contract logic
-import { ethers } from 'ethers'; // Import ethers for types
+import { encryptUint64 } from '../fhevm/encrypt'; // UPDATED: correct import
+import { getLoanVaultContract } from "../contracts/loanVault"; // UPDATED: use LoanVault
+import { ethers } from 'ethers';
 
 interface BorrowRepayModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  // Add required props for blockchain interaction
-  provider: ethers.BrowserProvider | null; 
+  isOpen: boolean;
+  onClose: () => void;
+  provider: ethers.BrowserProvider | null;
 }
 
 export function BorrowRepayModal({ isOpen, onClose, provider }: BorrowRepayModalProps) {
-  const [mode, setMode] = useState<'borrow' | 'repay'>('borrow');
-  const [amount, setAmount] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [errorStatus, setErrorStatus] = useState<string | null>(null); // New state for errors
+  const [mode, setMode] = useState<'borrow' | 'repay'>('borrow');
+  const [amount, setAmount] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [errorStatus, setErrorStatus] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorStatus(null);
-    
-    const floatAmount = parseFloat(amount);
-    if (!floatAmount || floatAmount <= 0 || !provider) {
-      setErrorStatus("Invalid amount or wallet not connected.");
-      return;
-    }
+  // ✅ FIX: floatAmount must be declared here, not inside handleSubmit
+  const floatAmount = Number(amount || 0);
 
-    setIsProcessing(true);
-    
-    try {
-      // 1. Encrypt the amount using the client SDK
-      const encrypted = await encryptUint64(floatAmount);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorStatus(null);
 
-      // 2. Get the contract instance (must have the signer)
-      const registry = getRegistryContract(provider);
-      
-      // 3. Call the appropriate encrypted function
-      let tx: ethers.ContractTransactionResponse;
+    if (!floatAmount || floatAmount <= 0 || !provider) {
+      setErrorStatus("Invalid amount or wallet not connected.");
+      return;
+    }
 
-      if (mode === 'borrow') {
-        tx = await registry.borrow(encrypted.handles[0]);
-      } else { // repay
-        tx = await registry.repay(encrypted.handles[0]);
-      }
+    setIsProcessing(true);
 
-      // Wait for the transaction to be mined
-      await tx.wait();
-      
-      setIsSuccess(true);
-      
-      // Auto close after success
-      setTimeout(() => {
-        handleClose();
-      }, 2000);
+    try {
+      // Encrypt
+      const encrypted = await encryptUint64(floatAmount);
 
-    } catch (error: any) {
-      console.error("FHE Transaction Failed:", error);
-      setErrorStatus(`Transaction failed: ${error.message.substring(0, 50)}...`);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+      // UPDATED: use LoanVault instead of Registry
+      const loanVault = getLoanVaultContract(provider);
 
-  const handleClose = () => {
-    setIsSuccess(false);
-    setIsProcessing(false);
-    setAmount('');
-    setErrorStatus(null);
-    onClose();
-  };
+      let tx;
+
+      // UPDATED logic
+      if (mode === "borrow") {
+        tx = await loanVault.borrow(encrypted.handles[0]);
+      } else {
+        tx = await loanVault.repay(encrypted.handles[0]);
+      }
+
+      await tx.wait();
+      setIsSuccess(true);
+
+      setTimeout(() => {
+        handleClose();
+      }, 2000);
+
+    } catch (error: any) {
+      console.error("FHE Transaction Failed:", error);
+      setErrorStatus(`Transaction failed: ${error.message.substring(0, 50)}...`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleClose = () => {
+    setIsSuccess(false);
+    setIsProcessing(false);
+    setAmount('');
+    setErrorStatus(null);
+    onClose();
+  };
 
   return (
     <AnimatePresence>
