@@ -1,19 +1,20 @@
-// src/wallet/connect.ts
-
+// wallet/connect.ts
 import { ethers } from "ethers";
 
 export async function connectWallet() {
   if (!window.ethereum) {
-    alert("MetaMask not installed");
+    alert("Metamask not installed");
     return null;
   }
 
   const provider = new ethers.BrowserProvider(window.ethereum);
-
   await provider.send("eth_requestAccounts", []);
+  const signer = await provider.getSigner();
+  const address = await signer.getAddress();
 
-  // Install into global namespace
+  // Attach to window so all modals can access
   (window as any).insperionProvider = provider;
+  (window as any).insperionAddress = address;
 
-  return provider;
+  return { provider, address };
 }
