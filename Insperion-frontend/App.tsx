@@ -8,89 +8,117 @@ import { EligibilityModal } from './components/EligibilityModal';
 import { BorrowRepayModal } from './components/BorrowRepayModal';
 import { AdminModal } from './components/AdminModal';
 import { AnimatedBackground } from './components/AnimatedBackground';
-import { ethers } from 'ethers'; // ⚠️ Added ethers import
+import { ethers } from 'ethers';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [depositModalOpen, setDepositModalOpen] = useState(false);
-  const [eligibilityModalOpen, setEligibilityModalOpen] = useState(false);
-  const [borrowRepayModalOpen, setBorrowRepayModalOpen] = useState(false);
-  const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
+  const [walletConnected, setWalletConnected] = useState(false);
 
-  // ⚠️ ADDED: State for provider and address to pass to Dashboard
-  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  const [userAddress, setUserAddress] = useState('');
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [eligibilityModalOpen, setEligibilityModalOpen] = useState(false);
+  const [borrowRepayModalOpen, setBorrowRepayModalOpen] = useState(false);
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
 
-  const handleConnectWallet = async () => {
-    try {
-      // ⚠️ UPDATED: Capture provider and address from connectWallet
-      const { provider, address } = await connectWallet();
-      
-      setProvider(provider);
-      setUserAddress(address);
-      setWalletConnected(true);
-    
-    } catch (err) {
-      console.error(err);
-      // Reset state if connection fails
-      setProvider(null);
-      setUserAddress('');
-      setWalletConnected(false);
-    }
-  };
+  // Provider + Address (core for FHE + Contracts)
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [userAddress, setUserAddress] = useState('');
 
-  const handleLaunchApp = () => {
-    // NOTE: You should likely call handleConnectWallet() here or ensure
-    // wallet is connected before launching to the dashboard.
-    // If you keep this logic, ensure you handle the missing provider/address in Dashboard.
-    setCurrentView('dashboard');
-  };
+  // -------------------------------------------
+  // WALLET CONNECTION HANDLER 
+  // -------------------------------------------
+  const handleConnectWallet = async () => {
+    try {
+      const result = await connectWallet(); // { provider, address }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#080014] via-[#1a0733] to-[#0B001F] text-white overflow-hidden relative">
-      <AnimatedBackground />
-      
-      <Navbar 
-        walletConnected={walletConnected}
-        onConnectWallet={handleConnectWallet}
-        onLogoClick={() => setCurrentView('landing')}
-      />
+      if (!result) {
+        setWalletConnected(false);
+        return;
+      }
 
-      {currentView === 'landing' ? (
-        <LandingPage onLaunchApp={handleLaunchApp} />
-      ) : (
-        <Dashboard
-          onDepositClick={() => setDepositModalOpen(true)}
-          onEligibilityClick={() => setEligibilityModalOpen(true)}
-          onBorrowRepayClick={() => setBorrowRepayModalOpen(true)}
-          onAdminClick={() => setAdminModalOpen(true)}
-          walletConnected={walletConnected}
-          // ⚠️ ADDED: Pass provider and address to Dashboard
-          provider={provider} 
-          userAddress={userAddress}
-        />
-      )}
+      setProvider(result.provider);
+      setUserAddress(result.address);
+      setWalletConnected(true);
 
-      <DepositModal 
-        isOpen={depositModalOpen} 
-        onClose={() => setDepositModalOpen(false)} 
-      />
+      console.log("Wallet Connected:", result.address);
 
-      <EligibilityModal 
-        isOpen={eligibilityModalOpen} 
-        onClose={() => setEligibilityModalOpen(false)} 
-      />
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
+      setWalletConnected(false);
+      setProvider(null);
+      setUserAddress('');
+    }
+  };
 
-      <BorrowRepayModal 
-        isOpen={borrowRepayModalOpen} 
-        onClose={() => setBorrowRepayModalOpen(false)} 
-      />
+  // -------------------------------------------
+  // LAUNCH APP BUTTON → Go to dashboard
+  // -------------------------------------------
+  const handleLaunchApp = async () => {
+    if (!walletConnected) {
+      await handleConnectWallet(); // require wallet before dashboard
+    }
+    setCurrentView('dashboard');
+  };
 
-      <AdminModal 
-        isOpen={adminModalOpen} 
-        onClose={() => setAdminModalOpen(false)} 
-      />
-    </div>
-  );
+  // -------------------------------------------
+  // RENDER
+  // -------------------------------------------
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#080014] via-[#1a0733] to-[#0B001F] text-white overflow-hidden relative">
+
+      <AnimatedBackground />
+
+      <Navbar
+        walletConnected={walletConnected}
+        onConnectWallet={handleConnectWallet}
+        onLogoClick={() => setCurrentView('landing')}
+      />
+
+      {/* ---------- LANDING OR DASHBOARD ---------- */}
+      {currentView === 'landing' ? (
+        <LandingPage onLaunchApp={handleLaunchApp} />
+      ) : (
+        <Dashboard
+          onDepositClick={() => setDepositModalOpen(true)}
+          onEligibilityClick={() => setEligibilityModalOpen(true)}
+          onBorrowRepayClick={() => setBorrowRepayModalOpen(true)}
+          onAdminClick={() => setAdminModalOpen(true)}
+          walletConnected={walletConnected}
+
+          // IMPORTANT: Dashboard needs provider + address
+          provider={provider}
+          userAddress={userAddress}
+        />
+      )}
+
+      {/* ---------- MODALS ---------- */}
+
+      {/* Deposit only needs modal control */}
+      <DepositModal
+        isOpen={depositModalOpen}
+        onClose={() => setDepositModalOpen(false)}
+      />
+
+      {/* Eligibility needs provider + address */}
+      <EligibilityModal
+        isOpen={eligibilityModalOpen}
+        onClose={() => setEligibilityModalOpen(false)}
+        provider={provider}
+        userAddress={userAddress}
+      />
+
+      {/* Borrow/Repay needs provider */}
+      <BorrowRepayModal
+        isOpen={borrowRepayModalOpen}
+        onClose={() => setBorrowRepayModalOpen(false)}
+        provider={provider}
+      />
+
+      {/* Admin modal (no blockchain yet) */}
+      <AdminModal
+        isOpen={adminModalOpen}
+        onClose={() => setAdminModalOpen(false)}
+      />
+
+    </div>
+  );
 }
