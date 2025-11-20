@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      'motion/react': path.resolve(__dirname, 'node_modules/framer-motion')
+      'motion/react': 'framer-motion',
+      '@zama-fhe/relayer-sdk': path.resolve(__dirname, 'node_modules/@zama-fhe/relayer-sdk/dist/browser')
     }
   }
 });
