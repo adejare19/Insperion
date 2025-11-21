@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Lock, TrendingUp, DollarSign } from 'lucide-react';
 import { GlassCard } from './GlassCard';
-import { Button } from './Button';
+import { Button } from './ui/Button';
 import { decrypt as decryptEncrypt } from '../fhevm/encrypt'; 
 import { decrypt as decryptDecrypt } from '../fhevm/decrypt';
 import { getRegistryContract } from '../contracts/registry';
