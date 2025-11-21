@@ -1,111 +1,258 @@
-# FHEVM Hardhat Template
+# Insperion FHE Lending Protocol
 
-A Hardhat-based template for developing Fully Homomorphic Encryption (FHE) enabled Solidity smart contracts using the
-FHEVM protocol by Zama.
-
-## Quick Start
-
-For detailed instructions see:
-[FHEVM Hardhat Quick Start Tutorial](https://docs.zama.ai/protocol/solidity-guides/getting-started/quick-start-tutorial)
-
-### Prerequisites
-
-- **Node.js**: Version 20 or higher
-- **npm or yarn/pnpm**: Package manager
-
-### Installation
-
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Set up environment variables**
-
-   ```bash
-   npx hardhat vars set MNEMONIC
-
-   # Set your Infura API key for network access
-   npx hardhat vars set INFURA_API_KEY
-
-   # Optional: Set Etherscan API key for contract verification
-   npx hardhat vars set ETHERSCAN_API_KEY
-   ```
-
-3. **Compile and test**
-
-   ```bash
-   npm run compile
-   npm run test
-   ```
-
-4. **Deploy to local network**
-
-   ```bash
-   # Start a local FHEVM-ready node
-   npx hardhat node
-   # Deploy to local network
-   npx hardhat deploy --network localhost
-   ```
-
-5. **Deploy to Sepolia Testnet**
-
-   ```bash
-   # Deploy to Sepolia
-   npx hardhat deploy --network sepolia
-   # Verify contract on Etherscan
-   npx hardhat verify --network sepolia <CONTRACT_ADDRESS>
-   ```
-
-6. **Test on Sepolia Testnet**
-
-   ```bash
-   # Once deployed, you can run a simple test on Sepolia.
-   npx hardhat test --network sepolia
-   ```
-
-## 📁 Project Structure
-
-```
-fhevm-hardhat-template/
-├── contracts/           # Smart contract source files
-│   └── FHECounter.sol   # Example FHE counter contract
-├── deploy/              # Deployment scripts
-├── tasks/               # Hardhat custom tasks
-├── test/                # Test files
-├── hardhat.config.ts    # Hardhat configuration
-└── package.json         # Dependencies and scripts
-```
-
-## 📜 Available Scripts
-
-| Script             | Description              |
-| ------------------ | ------------------------ |
-| `npm run compile`  | Compile all contracts    |
-| `npm run test`     | Run all tests            |
-| `npm run coverage` | Generate coverage report |
-| `npm run lint`     | Run linting checks       |
-| `npm run clean`    | Clean build artifacts    |
-
-## 📚 Documentation
-
-- [FHEVM Documentation](https://docs.zama.ai/fhevm)
-- [FHEVM Hardhat Setup Guide](https://docs.zama.ai/protocol/solidity-guides/getting-started/setup)
-- [FHEVM Testing Guide](https://docs.zama.ai/protocol/solidity-guides/development-guide/hardhat/write_test)
-- [FHEVM Hardhat Plugin](https://docs.zama.ai/protocol/solidity-guides/development-guide/hardhat)
-
-## 📄 License
-
-This project is licensed under the BSD-3-Clause-Clear License. See the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **GitHub Issues**: [Report bugs or request features](https://github.com/zama-ai/fhevm/issues)
-- **Documentation**: [FHEVM Docs](https://docs.zama.ai)
-- **Community**: [Zama Discord](https://discord.gg/zama)
+A privacy‑preserving lending and borrowing system powered by Zama’s **fhEVM**. Insperion enables fully homomorphic encrypted borrowing, lending, repayments, and interest calculations — all computed on‑chain without exposing raw financial data.
 
 ---
 
-**Built with ❤️ by the Zama team**
-# Insperion
+## 🎯 **Overview**
+
+Traditional DeFi platforms expose all balances, collateral ratios, and loan positions publicly on-chain. Insperion solves this by using **fully homomorphic encryption (FHE)** to ensure all user‑sensitive values remain hidden while still allowing the smart contracts to compute on them.
+
+Insperion enables:
+
+✅ **Borrowing with encrypted amounts**
+✅ **Encrypted interest accrual**
+✅ **Private repayments**
+✅ **Encrypted loan health checks** (LTV logic stays private)
+✅ **Lenders can provide liquidity without seeing borrower details**
+
+All math — collateralization, health factors, interest, debt — is handled using Zama’s encrypted types (`euint64`, `euint128`, etc.).
+
+---
+
+## 🏗️ **Architecture**
+
+### **Smart Contracts (Solidity + fhEVM)**
+
+* **LoanVault.sol** – The core encrypted lending vault
+
+  * Stores all borrower balances as encrypted integers
+  * Computes interest and debt growth homomorphically
+  * Prevents liquidation/leakage of borrower details
+  * Uses handle‑based ciphertext references
+
+* **Registry.sol** – Encrypted authorization + identity handles
+
+  * Maps encrypted borrower IDs to loan keys
+  * Secures read/write access for decryption via signature proofs
+
+### **Encrypted Data Structures**
+
+Each user has:
+
+* `encryptedCollateral` – euint128
+* `encryptedDebt` – euint128
+* `encryptedInterestRate` – euint64
+* `lastSyncTimestamp` – used for encrypted accrual calculations
+
+All values are stored as **ciphertext handles**, not plaintext numbers.
+
+---
+
+## 🔐 **Privacy Model**
+
+All sensitive values remain encrypted **on-chain**. Neither the contract nor the frontend sees the true values.
+
+The only parties capable of decrypting:
+
+* The user (borrower)
+* The Vault Manager (lender or admin role)
+
+All decryptions are done via Zama’s **Relayer + FHE SDK**, requiring EIP‑712 signatures.
+
+### **What remains private:**
+
+* Loan amount
+* Collateral amount
+* Interest rate
+* Health factor
+* Repayment sizes
+* Total time‑accrued debt
+
+### **What is public:**
+
+* That a loan exists
+* That a repayment occurred
+* Encrypted ciphertext handles (no value disclosure)
+
+---
+
+## 🧱 **Frontend (React + Vite + TypeScript)**
+
+Insperion uses a modern privacy‑focused frontend stack:
+
+* **Vite** – fast dev server
+* **React + TypeScript** – modular UI structure
+* **TailwindCSS** – modern design system
+* **Zama fhEVM SDK** – client‑side encryption/decryption
+* **ethers.js / viem** – contract interactions
+
+### **Pages**
+
+* **Dashboard** – view encrypted loan/collateral values
+* **Borrow Modal** – encrypt amount → submit loan request
+* **Repay Modal** – encrypt repayment amount → settle debt
+* **Admin Panel** – view encrypted pool analytics
+
+All encryption/decryption happens **client‑side only**.
+
+---
+
+## 🔄 **Loan Workflow**
+
+### 1️⃣ Borrower opens the Borrow modal
+
+User enters a loan amount → frontend encrypts it using FHE.
+
+```
+const encryptedAmount = encryptUint64(amount);
+```
+
+### 2️⃣ Borrower submits encrypted loan
+
+The contract never sees the clear value.
+
+### 3️⃣ Vault computes interest + health factor in encrypted space
+
+All LTV logic remains hidden.
+
+### 4️⃣ Borrower repays debt privately
+
+User encrypts repayment amount → contract subtracts it homomorphically.
+
+### 5️⃣ Borrower can decrypt their updated debt/collateral privately
+
+Only with signature authorization.
+
+---
+
+## ⚙️ **Tech Stack**
+
+### **Smart Contracts**
+
+* Solidity + fhEVM
+* Zama Encrypted Types
+* Custom Registry + Vault system
+
+### **Frontend**
+
+* React + Vite
+* TailwindCSS
+* FHEVM TypeScript SDK
+* Wagmi / Viem wallet tools
+
+### **Infrastructure**
+
+* VPS hosting with Node 18+/20+
+* Hardhat for deployments
+
+---
+
+## 🚀 **Getting Started**
+
+### **Prerequisites**
+
+* Node.js 20+
+* pnpm or npm
+* MetaMask
+* Sepolia ETH (for testing)
+
+### **Installation**
+
+```
+git clone <repo-url>
+cd Insperion-frontend
+npm install
+```
+
+### **Run locally**
+
+```
+npm run dev
+```
+
+Visit **[http://localhost:5173](http://localhost:5173)**
+
+---
+
+## 📁 **Project Structure**
+
+```
+Insperion-frontend/
+│ src/
+│   components/
+│     BorrowRepayModal.tsx
+│     Dashboard.tsx
+│     GlassCard.tsx
+│     ui/Button.tsx
+│   fhevm/
+│     encrypt.ts
+│     decrypt.ts
+│   contracts/
+│     loanVault.ts
+│     registry.ts
+│   App.tsx
+│   main.tsx
+│ public/
+│ vite.config.ts
+```
+
+---
+
+## 🔍 **Decryption Flow**
+
+1. User clicks "Decrypt"
+2. Frontend sends an EIP‑712 signature request
+3. Relayer verifies authorization
+4. Decrypted value returned **privately** to frontend
+
+The value is **never stored** and only displayed to the user.
+
+---
+
+## 📦 Deployment
+
+### **Smart contracts**
+
+```
+npx hardhat run scripts/deploy.ts --network sepolia
+```
+
+### **Frontend build**
+
+```
+npm run build
+npm run preview
+```
+
+### **VPS setup**
+
+* push code to GitHub
+* pull into VPS
+* run `npm install`
+* use PM2 or systemd to keep server alive
+
+---
+
+## 🧪 Tests
+
+* Contract unit tests use Hardhat
+* Frontend component tests (Vitest)
+* Encryption/decryption test harness with Zama SDK
+
+---
+
+## 🛣️ Future Improvements
+
+* Encrypted oracle for collateral pricing
+* Secure liquidation logic under FHE
+* Cross‑vault encrypted composability
+* Mobile version with deep wallet integration
+* Audits + zk‑FHE hybrid proofs
+
+---
+
+## 📜 License
+
+MIT
+* a **marketing‑style landing README**.
